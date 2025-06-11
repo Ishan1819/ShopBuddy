@@ -8,8 +8,10 @@ from urllib.parse import quote_plus
 
 def search_myntra(filters):
     options = Options()
-    options.add_argument("--headless=new")
+    options.add_argument("--headless=false")
     driver = webdriver.Chrome(options=options)
+
+    # login_myntra(driver)
 
     query = f"{filters['brand']} {filters['color']} {filters['category']}"
     url = f"https://www.myntra.com/{quote_plus(query)}"
@@ -17,31 +19,37 @@ def search_myntra(filters):
     time.sleep(3)
 
     results = []
-    products = driver.find_elements(By.XPATH, "//li[@class='product-base']")
+    products = driver.find_elements(By.XPATH, "//li[@class='product-base']/a")
     for product in products[:10]:
         try:
-            title_el = product.find_element(By.CLASS_NAME, "product-product")
-            brand_el = product.find_element(By.CLASS_NAME, "product-brand")
-            link_el = product.find_element(By.TAG_NAME, "a")
-            title = f"{brand_el.text.strip()} {title_el.text.strip()}"
-            link = link_el.get_attribute("href")
+            link = product.get_attribute("href")
+            driver.get(link)
+            time.sleep(3)
+            title = driver.title
             results.append({"title": title, "url": link})
-        except Exception:
+            # add_to_cart_myntra(driver, link)
+        except Exception as e:
+            print("❌ Error:", e)
             continue
 
     driver.quit()
     return results
 
-# ✅ Test it
-# if __name__ == "__main__":
-#     test_filters = {
-#         "platform": "myntra",
-#         "category": "t-shirt",
-#         "brand": "H&M",
-#         "color": "white",
-#         "material": "any",
-#         "min_price": 500,
-#         "max_price": 2000,
-#         "min_rating": 4.0
-#     }
-#     print(search_myntra(test_filters))
+def login_myntra(driver):
+    print("👉 Login to Myntra manually in opened browser if required...")
+    driver.get("https://www.myntra.com/login")
+    time.sleep(15)
+
+def add_to_cart_myntra(driver, product_url):
+    driver.get(product_url)
+    time.sleep(3)
+    try:
+        size_btn = driver.find_element(By.XPATH, "//p[text()='SELECT SIZE']/following::div[@class='size-buttons-buttonContainer']//button")
+        size_btn.click()
+        time.sleep(1)
+        add_button = driver.find_element(By.XPATH, "//div[text()='ADD TO BAG']")
+        add_button.click()
+        print("✅ Added to cart:", product_url)
+        time.sleep(2)
+    except Exception as e:
+        print("❌ Could not add to cart:", e)

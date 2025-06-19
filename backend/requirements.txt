@@ -3,3 +3,5 @@ python-dotenv
 selenium 
 webdriver-manager
 crewai
+crewai[tools]
+crewai-tools

@@ -1,18 +1,18 @@
-# backend/bots/myntra_bot.py
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 import time
 from urllib.parse import quote_plus
 
-def search_myntra(filters):
+def create_driver(headless=True):
     options = Options()
-    options.add_argument("--headless=false")
-    driver = webdriver.Chrome(options=options)
+    options.add_argument("--headless=new" if headless else "--headless=false")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    return webdriver.Chrome(options=options)
 
-    # login_myntra(driver)
-
+def search_myntra(filters):
+    driver = create_driver()
     query = f"{filters['brand']} {filters['color']} {filters['category']}"
     url = f"https://www.myntra.com/{quote_plus(query)}"
     driver.get(url)
@@ -24,32 +24,49 @@ def search_myntra(filters):
         try:
             link = product.get_attribute("href")
             driver.get(link)
-            time.sleep(3)
+            time.sleep(2)
             title = driver.title
             results.append({"title": title, "url": link})
-            # add_to_cart_myntra(driver, link)
         except Exception as e:
-            print("❌ Error:", e)
+            print("❌ Error extracting product:", e)
+            continue
+
+    driver.quit()
+    return results
+
+def add_to_cart_myntra(urls: list):
+    driver = create_driver(headless=False)  # Headless must be False for interaction
+
+    # Optional: login manually
+    login_myntra(driver)
+
+    results = []
+    for url in urls[:3]:
+        try:
+            driver.get(url)
+            time.sleep(3)
+            
+            # Select available size
+            size_btn = driver.find_element(By.XPATH, "//p[text()='SELECT SIZE']/following::div[@class='size-buttons-buttonContainer']//button")
+            size_btn.click()
+            time.sleep(1)
+
+            # Click 'Add to Bag'
+            add_button = driver.find_element(By.XPATH, "//div[text()='ADD TO BAG']")
+            add_button.click()
+            print("✅ Added to cart:", url)
+            results.append({"status": "added", "url": url})
+            time.sleep(2)
+
+        except Exception as e:
+            print("❌ Failed to add to cart:", e)
+            results.append({"status": "failed", "url": url, "error": str(e)})
             continue
 
     driver.quit()
     return results
 
 def login_myntra(driver):
-    print("👉 Login to Myntra manually in opened browser if required...")
+    print("👉 Please login manually in the opened browser...")
     driver.get("https://www.myntra.com/login")
-    time.sleep(15)
-
-def add_to_cart_myntra(driver, product_url):
-    driver.get(product_url)
-    time.sleep(3)
-    try:
-        size_btn = driver.find_element(By.XPATH, "//p[text()='SELECT SIZE']/following::div[@class='size-buttons-buttonContainer']//button")
-        size_btn.click()
-        time.sleep(1)
-        add_button = driver.find_element(By.XPATH, "//div[text()='ADD TO BAG']")
-        add_button.click()
-        print("✅ Added to cart:", product_url)
-        time.sleep(2)
-    except Exception as e:
-        print("❌ Could not add to cart:", e)
+    time.sleep(20)  # Give user time to log in manually

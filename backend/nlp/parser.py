@@ -11,6 +11,7 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 def parse_user_query_with_gemini(query: str) -> dict:
+    # print("Thisquery: ", query)
     prompt = f"""
 You are a smart shopping assistant. 
 Extract structured information from the user's request and return it in JSON format.
@@ -43,7 +44,15 @@ Return only the JSON.
             content = content.replace("```", "").strip()
 
         parsed = eval(content)  # Use json.loads() if you want stricter parsing
+        print("Parsed Output:", query , "->", parsed)
         return parsed
     except Exception as e:
         print("Parsing error:", e)
         return {"error": "Could not parse response", "raw_output": response.text}
+
+# if __name__ == "__main__":
+#     # Example usage
+#     user_query = "Give me shoes white in colour from Amazon"
+#     parsed_filters = parse_user_query_with_gemini(user_query)
+#     print("Parsed Filters:", parsed_filters)
+#     print(type(parsed_filters))

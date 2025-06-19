@@ -437,156 +437,21 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 from urllib.parse import quote_plus
 
-def create_driver(headless=True):
+def create_driver(headless=False):
     options = Options()
-    options.add_argument("--headless=new" if headless else "--headless=false")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
+    options.add_experimental_option("useAutomationExtension", False)
+
+    if headless:
+        options.add_argument("--headless=new")
+    else:
+        print("🟢 Headless mode is OFF — browser will be visible.")
+
     return webdriver.Chrome(options=options)
 
-# def search_amazon_improved(filters):
-#     """
-#     Improved Amazon search with better query construction and filtering
-#     """
-#     options = Options()
-#     options.add_argument("--headless=false")
-#     options.add_argument("--disable-blink-features=AutomationControlled")
-#     options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    
-#     driver = webdriver.Chrome(options=options)
-#     wait = WebDriverWait(driver, 10)
-    
-#     try:
-#         # Method 1: Construct better search query
-#         # Put brand first, then category, then specifications
-#         query_parts = []
-        
-#         if filters.get('brand'):
-#             query_parts.append(filters['brand'])
-#         if filters.get('category'):
-#             query_parts.append(filters['category'])
-#         if filters.get('gender'):
-#             query_parts.append(f"for {filters['gender']}")
-#         if filters.get('color'):
-#             query_parts.append(filters['color'])
-            
-#         query = " ".join(query_parts)
-#         print(f"🔍 Searching for: {query}")
-        
-#         # Navigate to Amazon with search
-#         url = f"https://www.amazon.in/s?k={quote_plus(query)}"
-#         driver.get(url)
-#         time.sleep(2)
-        
-#         # Method 2: Apply filters using Amazon's filter system
-#         try:
-#             # Apply brand filter if available
-#             if filters.get('brand'):
-#                 brand_filter = apply_brand_filter(driver, filters['brand'])
-#                 if brand_filter:
-#                     time.sleep(2)
-
-#             # Apply category filter
-#             if filters.get('category'):
-#                 category_filter = apply_category_filter(driver, filters['category'])
-#                 if category_filter:
-#                     time.sleep(2)
-
-#         except Exception as e:
-#             print(f"⚠️ Filter application issue: {e}")
-        
-#         # Apply price filter if provided
-#         try:
-#             if filters.get('min_price', 0) > 0 or filters.get('max_price', 999999) < 999999:
-#                 apply_price_filter(driver, filters.get('min_price', 0), filters.get('max_price', 999999))
-#                 time.sleep(2)
-#         except Exception as e:
-#             print("⚠️ Price filter issue:", e)
-        
-#         # Extract results
-#         results = extract_product_results(driver)
-#         return results
-        
-#     finally:
-#         driver.quit()
-
-# def apply_brand_filter(driver, brand):
-#     """Apply brand filter on Amazon search results"""
-#     try:
-#         # Look for brand filter section
-#         brand_selectors = [
-#             f"//span[contains(text(), '{brand}')]/preceding-sibling::input[@type='checkbox']",
-#             f"//label[contains(text(), '{brand}')]/input[@type='checkbox']",
-#             f"//span[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{brand.lower()}')]/preceding-sibling::input[@type='checkbox']"
-#         ]
-        
-#         for selector in brand_selectors:
-#             try:
-#                 brand_checkbox = driver.find_element(By.XPATH, selector)
-#                 if not brand_checkbox.is_selected():
-#                     driver.execute_script("arguments[0].click();", brand_checkbox)
-#                     print(f"✅ Applied {brand} brand filter")
-#                     return True
-#             except:
-#                 continue
-                
-#         print(f"⚠️ Could not find {brand} brand filter")
-#         return False
-        
-#     except Exception as e:
-#         print(f"❌ Brand filter error: {e}")
-#         return False
-
-# def apply_category_filter(driver, category):
-#     """Apply category filter on Amazon search results"""
-#     try:
-#         # Look for category filter in left sidebar
-#         category_selectors = [
-#             f"//span[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{category.lower()}')]/ancestor::a",
-#             f"//a[contains(@href, '{category.lower()}')]"
-#         ]
-        
-#         for selector in category_selectors:
-#             try:
-#                 category_link = driver.find_element(By.XPATH, selector)
-#                 category_link.click()
-#                 print(f"✅ Applied {category} category filter")
-#                 return True
-#             except:
-#                 continue
-                
-#         print(f"⚠️ Could not find {category} category filter")
-#         return False
-        
-#     except Exception as e:
-#         print(f"❌ Category filter error: {e}")
-#         return False
-
-# def apply_price_filter(driver, min_price, max_price):
-#     """Apply price filter"""
-#     try:
-#         min_input = driver.find_element(By.ID, "low-price")
-#         max_input = driver.find_element(By.ID, "high-price")
-        
-#         min_input.clear()
-#         max_input.clear()
-        
-#         if min_price > 0:
-#             min_input.send_keys(str(min_price))
-#         if max_price < 999999:
-#             max_input.send_keys(str(max_price))
-            
-#         # Find and click Go button
-#         go_button = driver.find_element(By.XPATH, "//input[@aria-labelledby='a-autoid-1-announce'] | //span[contains(text(), 'Go')]/parent::span/parent::button")
-#         go_button.click()
-#         print(f"✅ Applied price filter: ₹{min_price} - ₹{max_price}")
-        
-#     except Exception as e:
-#         print(f"❌ Price filter error: {e}")
-#         raise e
 
 def extract_product_results(driver):
     """Extract product information from search results"""
@@ -754,69 +619,80 @@ def search_amazon(filters):
 
 def login_amazon(driver):
     print("👉 Login to Amazon manually...")
-    driver.get("https://www.amazon.in/ap/signin")
-    time.sleep(2)
+    driver.get("https://www.amazon.in/ap/signin?openid.pape.max_auth_age=0&openid.return_to=https%3A%2F%2Fwww.amazon.in%2F%3Fref_%3Dnav_ya_signin&openid.identity=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0%2Fidentifier_select&openid.assoc_handle=inflex&openid.mode=checkid_setup&openid.claimed_id=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0%2Fidentifier_select&openid.ns=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0")
+    time.sleep(5)
 
-def add_to_cart_amazon(urls: list):
+def add_to_cart_amazon(urls: list, *args, **kwargs):
+    """
+    Adds products to the Amazon cart after manual login.
+    Accepts extra args for compatibility with agent frameworks like CrewAI.
+    """
+    if isinstance(urls, dict) and "urls" in urls:
+        urls = urls["urls"]
+    elif not isinstance(urls, list):
+        raise ValueError("Expected a list of URLs or {'urls': [...]}, got: " + str(type(urls)))
     driver = create_driver(headless=False)
-    
-    # Optional: Login manually if needed
+
+    # Manual login
     login_amazon(driver)
-    
+    input("🔐 After logging in, press ENTER to continue...")
+
     results = []
+
     for url in urls[:3]:
         try:
             driver.get(url)
-            time.sleep(2)
-            
-            # Multiple selectors for add to cart button
-            cart_selectors = [
-                "add-to-cart-button",
-                "cart",
-                "a-button-input"
-            ]
-            
+            time.sleep(3)
+
             added = False
-            for selector in cart_selectors:
-                try:
-                    add_button = driver.find_element(By.ID, selector)
-                    add_button.click()
-                    print("✅ Added to cart:", url)
-                    results.append({"status": "added", "url": url})
-                    added = True
-                    break
-                except:
-                    continue
-            
+
+            try:
+                add_button = driver.find_element(By.ID, "add-to-cart-button")
+                driver.execute_script("arguments[0].click();", add_button)
+                added = True
+            except:
+                pass
+
             if not added:
-                # Try by text
                 try:
-                    add_button = driver.find_element(By.XPATH, "//span[contains(text(), 'Add to Cart')]/parent::button")
-                    add_button.click()
-                    print("✅ Added to cart:", url)
-                    results.append({"status": "added", "url": url})
-                except Exception as e:
-                    print("❌ Could not add to cart:", url, "| Error:", e)
-                    results.append({"status": "failed", "url": url, "error": str(e)})
-            
+                    add_button = driver.find_element(By.XPATH, "//input[@value='Add to Cart' or @aria-label='Add to Cart']")
+                    driver.execute_script("arguments[0].click();", add_button)
+                    added = True
+                except:
+                    pass
+
+            if added:
+                print("✅ Added to cart:", url)
+                results.append({"status": "added", "url": url})
+            else:
+                print("❌ Could not add to cart:", url)
+                results.append({"status": "failed", "url": url, "error": "Button not found"})
+
             time.sleep(2)
-            
+
         except Exception as e:
-            print("❌ Could not add to cart:", url, "| Error:", e)
+            print("❌ Error on product:", url, "|", e)
             results.append({"status": "failed", "url": url, "error": str(e)})
-    
+
+    print("🛒 Opening cart for verification...")
+    driver.get("https://www.amazon.in/gp/cart/view.html")
+    input("👀 Check the cart in the browser. Press ENTER to close the browser...")
+
     driver.quit()
     return results
+
+
+
 
 # # Main function to be called by external search tool
 def main(test_filters):
     results = search_amazon(test_filters)
     print(f"\n📋 Found {len(results)} results:")
-    for i, result in enumerate(results, 1):
-        print(f"{i}. {result['title']}")
-        print(f"   Price: {result.get('price', 'N/A')}")
-        print(f"   URL: {result['url'][:700]}...")
-        print()
+    # for i, result in enumerate(results, 1):
+    #     print(f"{i}. {result['title']}")
+    #     print(f"   Price: {result.get('price', 'N/A')}")
+    #     print(f"   URL: {result['url'][:700]}...")
+    #     print()
     
     return results
 

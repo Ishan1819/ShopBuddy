@@ -18,7 +18,7 @@ def add_to_cart(product_list):
         url = product.get("url", "")
         if "amazon" in url:
             try:
-                add_to_cart_amazon(driver, url)
+                add_to_cart_amazon([url])
             except Exception as e:
                 print("❌ Amazon cart error:", e)
 

@@ -83,7 +83,7 @@ from crewai import Agent, Task, Crew
 from backend.llm.litellm_wrapper import LiteLLMWrapper
 from backend.tools.parser_tool import get_parser_tool
 from backend.tools.search_tool import get_search_tool
-# from backend.tools.cart_tool import get_cart_tool
+from backend.tools.cart_tool import get_cart_tool
 
 # Use litellm-wrapped Gemini
 gemini_llm = LiteLLMWrapper(model="gemini/gemini-1.5-flash")
@@ -110,14 +110,14 @@ def create_crew(user_query: str) -> Crew:
         llm=gemini_llm
     )
     
-    # cart_ai = Agent(
-    #     role="Cart Handler",
-    #     goal="Add the best items to cart from the product results",
-    #     backstory="Handles automation for adding products to carts.",
-    #     tools=[get_cart_tool()],    
-    #     verbose=True,
-    #     llm=gemini_llm
-    # )
+    cart_ai = Agent(
+        role="Cart Handler",
+        goal="Add the best items to cart from the product results",
+        backstory="Handles automation for adding products to carts.",
+        tools=[get_cart_tool()],    
+        verbose=True,
+        llm=gemini_llm
+    )
     
     # === Tasks ===
     task1 = Task(
@@ -133,24 +133,24 @@ def create_crew(user_query: str) -> Crew:
         context=[task1]  # This tells CrewAI that this task depends on task1's output
     )
     
-    # task3 = Task(
-    #     description="Add the top 3 products from the search results to the cart. Use the product list from the previous task.",
-    #     agent=cart_ai,
-    #     expected_output="A confirmation that the top 3 products were added to the cart.",
-    #     context=[task2]  # This tells CrewAI that this task depends on task2's output
-    # )
+    task3 = Task(
+        description="Add the top 3 products from the search results to the cart. Use the product list from the previous task.",
+        agent=cart_ai,
+        expected_output="A confirmation that the top 3 products were added to the cart.",
+        context=[task2]  # This tells CrewAI that this task depends on task2's output
+    )
     
     # === Crew ===
-    # return Crew(
-    #     agents=[parser_ai, search_ai, cart_ai],
-    #     tasks=[task1, task2, task3],
-    #     process="sequential",
-    #     verbose=True
-    # )
-
     return Crew(
-        agents=[parser_ai, search_ai],
-        tasks=[task1, task2],
+        agents=[parser_ai, search_ai, cart_ai],
+        tasks=[task1, task2, task3],
         process="sequential",
         verbose=True
     )
+
+    # return Crew(
+    #     agents=[parser_ai, search_ai],
+    #     tasks=[task1, task2],
+    #     process="sequential",
+    #     verbose=True
+    # )

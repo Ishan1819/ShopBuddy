@@ -87,6 +87,7 @@ from backend.llm.litellm_wrapper import LiteLLMWrapper
 from backend.tools.parser_tool import get_parser_tool
 from backend.tools.search_tool import get_search_tool
 from backend.tools.cart_tool import get_cart_tool
+from backend.tools.price_drop_tool import get_price_drop_tool
 
 gemini_llm = LiteLLMWrapper(model="gemini/gemini-1.5-flash")
 
@@ -149,6 +150,30 @@ def create_addtocart_crew(product_url: str) -> Crew:
     return Crew(
         agents=[cart_ai],
         tasks=[cart_task],
+        process="sequential",
+        verbose=True
+    )
+
+def create_price_drop_crew(product_url: str) -> Crew:
+    # Placeholder for price drop notifier crew
+    # This would be similar to the addtocart crew but focused on monitoring price drops
+    price_drop_ai = Agent(
+        role="Price Drop Notifier",
+        goal="Notify user when the price drops for a specific product",
+        backstory="Expert at monitoring product prices and notifying users.",
+        tools=[get_price_drop_tool()],  # Assuming get_cart_tool() can handle price monitoring
+        verbose=True,
+        llm=gemini_llm
+    )
+    price_drop_task = Task(
+        description=f"Monitor price drop for product: '{product_url}'",
+        agent=price_drop_ai,
+        expected_output="Notification when the price drops."
+    )
+
+    return Crew(
+        agents=[price_drop_ai],
+        tasks=[price_drop_task],
         process="sequential",
         verbose=True
     )

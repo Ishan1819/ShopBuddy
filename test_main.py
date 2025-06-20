@@ -16,7 +16,7 @@
 
 
 import json
-from backend.crew_config.crew_setup import create_parser_search_crew, create_addtocart_crew
+from backend.crew_config.crew_setup import create_parser_search_crew, create_addtocart_crew, create_price_drop_crew
 
 def main():
     print("🛒 Welcome to ShopBuddyAI!")
@@ -60,13 +60,25 @@ def main():
     for idx, product in enumerate(search_results, 1):
         print(f"{idx}. {product['title'][:60]}...\n   💰 {product.get('price', 'N/A')} | 🔗 {product['url']}\n")
 
-    # Step 4: Ask user for product URL to add to cart
-    selected_url = input("\n🛒 Enter the URL of the product you want to add to the cart: ").strip()
-    if selected_url:
-        cart_crew = create_addtocart_crew(selected_url)
-        cart_crew.kickoff()
+    check = input("Press 1 for adding to cart, Press 2 for price drop notifier, or any other key to exit: ").strip()
+    if check == '1':
+        print("🛒 Proceeding to add product to cart...")
+        selected_url = input("\n🛒 Enter the URL of the product you want to add to the cart: ").strip()
+        if selected_url:
+            cart_crew = create_addtocart_crew(selected_url)
+            cart_crew.kickoff()
+    elif check == '2':
+        url = input("Enter the product URL for price drop notifications: ").strip()
+        if url:
+            print("🔔 Setting up price drop notifier for:", url)
+            price_drop_crew = create_price_drop_crew(url)
+            price_drop_crew.kickoff()
     else:
-        print("❌ No URL entered. Exiting.")
+        print("❌ Exiting without adding to cart or setting up price drop notifier.")
+        return
+
+    # Step 4: Ask user for product URL to add to cart
+    
 
 if __name__ == "__main__":
     main()

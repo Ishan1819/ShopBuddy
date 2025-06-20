@@ -5,3 +5,5 @@ webdriver-manager
 crewai
 crewai[tools]
 crewai-tools
+schedule
+selenium

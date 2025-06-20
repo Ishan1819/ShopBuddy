@@ -11,8 +11,17 @@ from backend.bots.myntra_bot import add_to_cart_myntra
 
 def add_to_cart(product_list):
     options = Options()
-    options.add_argument("--headless=false")  # Show browser for login if needed
+    options.add_argument("--headless=false")
     driver = webdriver.Chrome(options=options)
+
+    # 🔧 Fix starts here
+    if isinstance(product_list, str):
+        product_list = [{"url": product_list}]
+    elif isinstance(product_list, dict):
+        product_list = [product_list]
+    elif isinstance(product_list, list) and all(isinstance(item, str) for item in product_list):
+        product_list = [{"url": u} for u in product_list]
+    # 🔧 Fix ends here
 
     for product in product_list:
         url = product.get("url", "")
@@ -38,4 +47,4 @@ def add_to_cart(product_list):
             print("❌ Unknown platform:", url)
 
     driver.quit()
-    return f"🛒 Added top {len(product_list)} items to cart."
+    return f"🛒 Added {len(product_list)} item(s) to cart."

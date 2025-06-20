@@ -13,17 +13,30 @@ def get_search_tool():
             platforms = filters.get("platform", [])
             if isinstance(platforms, str):
                 platforms = [platforms]
+
             results = []
             for platform in platforms:
                 platform = platform.lower()
-                if platform == "amazon":
-                    results.extend(main(filters))
-                elif platform == "flipkart":
-                    results.extend(search_flipkart(filters))
-                elif platform == "myntra":
-                    results.extend(search_myntra(filters))
-                else:
-                    results.append({"error": f"Unsupported platform: {platform}"})
+                try:
+                    if platform == "amazon":
+                        platform_results = main(filters)
+                    elif platform == "flipkart":
+                        platform_results = search_flipkart(filters)
+                    elif platform == "myntra":
+                        platform_results = search_myntra(filters)
+                    else:
+                        platform_results = [{"error": f"Unsupported platform: {platform}"}]
+
+                    if not isinstance(platform_results, list):
+                        print(f"❌ Expected a list, but got {type(platform_results)} for {platform}")
+                        continue
+
+                    results.extend(platform_results)
+                except Exception as e:
+                    print(f"❌ Error searching {platform}: {e}")
+                    results.append({"error": f"{platform} search failed: {str(e)}"})
+
+            print(f"✅ Total results found: {len(results)}")
             return results
 
     return ProductSearchTool()

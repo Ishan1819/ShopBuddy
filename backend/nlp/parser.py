@@ -50,9 +50,3 @@ Return only the JSON.
         print("Parsing error:", e)
         return {"error": "Could not parse response", "raw_output": response.text}
 
-# if __name__ == "__main__":
-#     # Example usage
-#     user_query = "Give me shoes white in colour from Amazon"
-#     parsed_filters = parse_user_query_with_gemini(user_query)
-#     print("Parsed Filters:", parsed_filters)
-#     print(type(parsed_filters))

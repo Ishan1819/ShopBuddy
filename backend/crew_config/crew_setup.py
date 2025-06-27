@@ -88,6 +88,7 @@ from backend.tools.parser_tool import get_parser_tool
 from backend.tools.search_tool import get_search_tool
 from backend.tools.cart_tool import get_cart_tool
 from backend.tools.price_drop_tool import get_price_drop_tool
+from backend.tools.buy_now_tool import get_buy_now_tool
 
 gemini_llm = LiteLLMWrapper(model="gemini/gemini-1.5-flash")
 
@@ -174,6 +175,63 @@ def create_price_drop_crew(product_url: str) -> Crew:
     return Crew(
         agents=[price_drop_ai],
         tasks=[price_drop_task],
+        process="sequential",
+        verbose=True
+    )
+
+
+# def create_buy_now_crew(name, phone, address, payment_choice) -> Crew:
+#     buy_ai = Agent(
+#         role="Cart Buyer",
+#         goal="Complete the purchase of items in the Amazon cart",
+#         backstory="An expert in automating the checkout process on Amazon, capable of handling address entry and payment methods.",
+#         tools=[get_buy_now_tool()],
+#         verbose=True,
+#         llm=gemini_llm
+#     )
+
+#     buy_task = Task(
+#         description="Complete the checkout with provided address and selected payment method.",
+#         agent=buy_ai,
+#         expected_output="Order placed or redirected to payment page.",
+#         input={
+#             "name": name,
+#             "phone": phone,
+#             "address": address,
+#             "payment_choice": payment_choice
+#         }
+#     )   
+
+#     return Crew(
+#         agents=[buy_ai],
+#         tasks=[buy_task],
+#         process="sequential",
+#         verbose=True
+#     )
+
+
+
+
+def create_buy_now_crew() -> Crew:
+    buy_ai = Agent(
+        role="Cart Buyer",
+        goal="Complete the purchase of items in the Amazon cart",
+        backstory="An expert in automating the checkout process on Amazon, capable of handling address entry and payment methods.",
+        tools=[get_buy_now_tool()],
+        verbose=True,
+        llm=gemini_llm
+    )
+
+    buy_task = Task(
+        description="Interactively collect address and payment info, then complete checkout.",
+        agent=buy_ai,
+        expected_output="Order placed or redirected to payment page.",
+        input={}  # 🔄 No more pre-filled inputs
+    )
+
+    return Crew(
+        agents=[buy_ai],
+        tasks=[buy_task],
         process="sequential",
         verbose=True
     )

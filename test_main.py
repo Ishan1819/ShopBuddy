@@ -16,7 +16,7 @@
 
 
 import json
-from backend.crew_config.crew_setup import create_parser_search_crew, create_addtocart_crew, create_price_drop_crew
+from backend.crew_config.crew_setup import create_parser_search_crew, create_addtocart_crew, create_price_drop_crew, create_buy_now_crew
 
 def main():
     print("🛒 Welcome to ShopBuddyAI!")
@@ -73,12 +73,39 @@ def main():
             print("🔔 Setting up price drop notifier for:", url)
             price_drop_crew = create_price_drop_crew(url)
             price_drop_crew.kickoff()
-    else:
-        print("❌ Exiting without adding to cart or setting up price drop notifier.")
-        return
+    # elif check == '3':
+    #     print("🛒 Buy Now option selected.")
+
+    #     # Collect user details
+    #     name = input("👤 Enter Full Name: ").strip()
+    #     phone = input("📞 Enter Phone Number: ").strip()
+    #     address = input("🏠 Enter Full Address: ").strip()
+
+    #     # Show payment options
+    #     print("\n💳 Payment Options:")
+    #     print("1. Credit/Debit Card")
+    #     print("2. Net Banking")
+    #     print("3. Online Payment (UPI)")
+    #     print("4. EMI")
+    #     print("5. Cash on Delivery")
+    #     payment_choice = input("Choose your payment method [1-5]: ").strip()
+
+    #     # Call the crew with all collected info
+    #     buy_crew = create_buy_now_crew(name, phone, address, payment_choice)
+    #     buy_crew.kickoff()
+
+
+    # else:
+    #     print("❌ Exiting without adding to cart or setting up price drop notifier.")
+    #     return
+
+
+
+    elif check == '3':
+        print("🛒 Buy Now option selected.")
+        buy_crew = create_buy_now_crew()
+        buy_crew.kickoff()
 
     # Step 4: Ask user for product URL to add to cart
-    
-
 if __name__ == "__main__":
     main()

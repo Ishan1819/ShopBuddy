@@ -1,27 +1,13 @@
-# from backend.crew_config.crew_setup import create_crew
-
-# if __name__ == "__main__":
-#     print("🛒 Welcome to ShopBuddyAI!")
-#     user_query = input("Enter your shopping request: ")
-#     print(user_query)
-#     crew = create_crew(user_query)
-
-#     print("\n🤖 Crew is working on your query...")
-#     result = crew.kickoff()
-#     print("\n✅ Result:\n", result)
-
-
-
-
-
-
 import json
-from backend.crew_config.crew_setup import create_parser_search_crew, create_addtocart_crew, create_price_drop_crew, create_buy_now_crew
+from backend.crew_config.crew_setup import (
+    create_parser_search_crew,
+    create_addtocart_crew,
+    create_price_drop_crew,
+    create_buy_now_crew
+)
 
-def main():
-    print("🛒 Welcome to ShopBuddyAI!")
-    user_query = input("Enter your shopping request: ").strip()
-
+def search_products_flow():
+    user_query = input("🔍 What do you want to search? ").strip()
     if not user_query:
         print("⚠️ No query entered.")
         return
@@ -32,11 +18,6 @@ def main():
 
     # Step 2: Access task output safely
     task_output = parser_search_crew.tasks[1].output
-    print("🧪 Task 2 Output:", task_output)
-    print(type(task_output))
-
-    
-    # Try parsing from string
     try:
         if isinstance(task_output, str):
             search_results = json.loads(task_output)
@@ -50,62 +31,59 @@ def main():
         print(f"❌ Failed to parse product list: {e}")
         return
 
-
     if not isinstance(search_results, list):
         print("❌ Unexpected format of search results.")
         return
 
-    # Step 3: Display top products
+    # Display top products
     print("\n🛍️ Top 15 Products:\n")
     for idx, product in enumerate(search_results, 1):
         print(f"{idx}. {product['title'][:60]}...\n   💰 {product.get('price', 'N/A')} | 🔗 {product['url']}\n")
 
-    check = input("Press 1 for adding to cart, Press 2 for price drop notifier, or any other key to exit: ").strip()
-    if check == '1':
-        print("🛒 Proceeding to add product to cart...")
-        selected_url = input("\n🛒 Enter the URL of the product you want to add to the cart: ").strip()
-        if selected_url:
-            cart_crew = create_addtocart_crew(selected_url)
-            cart_crew.kickoff()
-    elif check == '2':
-        url = input("Enter the product URL for price drop notifications: ").strip()
-        if url:
-            print("🔔 Setting up price drop notifier for:", url)
-            price_drop_crew = create_price_drop_crew(url)
-            price_drop_crew.kickoff()
-    # elif check == '3':
-    #     print("🛒 Buy Now option selected.")
+def add_to_cart_flow():
+    url = input("🛒 Enter the product URL to add to cart: ").strip()
+    if url:
+        cart_crew = create_addtocart_crew(url)
+        cart_crew.kickoff()
 
-    #     # Collect user details
-    #     name = input("👤 Enter Full Name: ").strip()
-    #     phone = input("📞 Enter Phone Number: ").strip()
-    #     address = input("🏠 Enter Full Address: ").strip()
+def price_notifier_flow():
+    url = input("🔔 Enter the product URL for price drop notifications: ").strip()
+    if url:
+        price_drop_crew = create_price_drop_crew(url)
+        price_drop_crew.kickoff()
 
-    #     # Show payment options
-    #     print("\n💳 Payment Options:")
-    #     print("1. Credit/Debit Card")
-    #     print("2. Net Banking")
-    #     print("3. Online Payment (UPI)")
-    #     print("4. EMI")
-    #     print("5. Cash on Delivery")
-    #     payment_choice = input("Choose your payment method [1-5]: ").strip()
-
-    #     # Call the crew with all collected info
-    #     buy_crew = create_buy_now_crew(name, phone, address, payment_choice)
-    #     buy_crew.kickoff()
+def buy_now_flow():
+    print("💳 Proceeding to buy now...")
+    buy_crew = create_buy_now_crew()
+    buy_crew.kickoff()
 
 
-    # else:
-    #     print("❌ Exiting without adding to cart or setting up price drop notifier.")
-    #     return
+def main():
+    print("🛒 Welcome to ShopBuddyAI!")
 
+    while True:
+        print("\n🔧 What would you like to do?")
+        print("1. Search for products")
+        print("2. Add a product to cart directly")
+        print("3. Set a price drop notifier")
+        print("4. Buy items from the cart")
+        print("5. Exit")
 
+        choice = input("Choose an option [1-5]: ").strip()
 
-    elif check == '3':
-        print("🛒 Buy Now option selected.")
-        buy_crew = create_buy_now_crew()
-        buy_crew.kickoff()
+        if choice == '1':
+            search_products_flow()
+        elif choice == '2':
+            add_to_cart_flow()
+        elif choice == '3':
+            price_notifier_flow()
+        elif choice == '4':
+            buy_now_flow()
+        elif choice == '5':
+            print("👋 Exiting ShopBuddyAI. See you again!")
+            break
+        else:
+            print("❌ Invalid choice. Please enter a number from 1 to 5.")
 
-    # Step 4: Ask user for product URL to add to cart
 if __name__ == "__main__":
     main()

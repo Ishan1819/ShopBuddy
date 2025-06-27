@@ -151,23 +151,35 @@ def extract_product_results(driver):
 
 def search_amazon_alternative(filters):
     """
-    Alternative approach using dynamic search URL
+    Dynamically constructs Amazon search query from filters.
+    Skips fields with value 'any' and includes extra features if available.
     """
     driver = create_driver(headless=True)
 
     try:
-        # Construct refined search query
+        # Extract filters safely
         brand = filters.get('brand', '')
         color = filters.get('color', '')
         category = filters.get('category', '')
         gender = filters.get('gender', '')
-        price = filters.get('price', '')  # Assuming price is a number like 7000 or a string "under 500"
+        price = filters.get('price', '')
+        other_features = filters.get('other_features', '')  # new field e.g., '7kg', 'for kids'
 
-        # Add price keyword if available
-        price_phrase = f"under {price}" if price else ""
+        # Only add if they are meaningful (not 'any' or empty)
+        parts = []
+        for value in [brand, color, category, gender]:
+            if value and value != 'any':
+                parts.append(value)
 
-        # Combine all parts into search query
-        refined_query = f"{brand} {color} {category} {gender} {price_phrase}".strip()
+        # Add price constraint as phrase
+        if price and price != 'any':
+            parts.append(f"under {price}")
+
+        # Add additional user-defined features like "7kg", "4-star", etc.
+        if other_features and other_features != 'any':
+            parts.append(other_features)
+
+        refined_query = " ".join(parts).strip()
         
         search_url = f"https://www.amazon.in/s?k={quote_plus(refined_query)}"
         print(f"🔍 Navigating to: {search_url}")

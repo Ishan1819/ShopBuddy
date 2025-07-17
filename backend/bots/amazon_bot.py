@@ -299,8 +299,3 @@ def main(test_filters):
     print(f"\n📋 Found {len(results)} results:")
     
     return results
-
-
-
-
-

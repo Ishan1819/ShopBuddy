@@ -1,23 +1,81 @@
 import json
+import speech_recognition as sr
+import google.generativeai as genai
+
 from backend.crew_config.crew_setup import (
     create_parser_search_crew,
     create_addtocart_crew,
     create_price_drop_crew,
     create_buy_now_crew
 )
+import os
+import dotenv
+# Setup Gemini
+dotenv.load_dotenv()
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel("gemini-1.5-flash")
 
-def search_products_flow():
-    user_query = input("🔍 What do you want to search? ").strip()
+# Voice to text
+def get_voice_input():
+    recognizer = sr.Recognizer()
+    mic = sr.Microphone()
+    with mic as source:
+        print("🎙️ Speak your query...")
+        recognizer.adjust_for_ambient_noise(source)
+        audio = recognizer.listen(source)
+    try:
+        text = recognizer.recognize_google(audio)
+        print("🗣️ You said:", text)
+        return text
+    except sr.UnknownValueError:
+        print("❌ Could not understand audio.")
+        return None
+
+# Ask Gemini to classify command
+import re
+import json
+
+def route_command(query):
+    prompt = f"""
+You are an AI assistant for a shopping assistant app. Based on the user command below, return a JSON object like this:
+{{
+  "action": "<one of: search_products, add_to_cart, price_notifier, buy_now, exit, or unknown>",
+  "query": "<original or modified user query if needed>"
+}}
+
+Only return the JSON. Do not include explanations.
+
+User command: "{query}"
+"""
+    response = model.generate_content(prompt)
+    raw_text = response.text.strip()
+
+    print("📨 Gemini raw response:", raw_text)
+
+    # Clean triple backticks or code formatting
+    cleaned = re.sub(r"^```(?:json)?", "", raw_text)
+    cleaned = re.sub(r"```$", "", cleaned).strip()
+
+    try:
+        return json.loads(cleaned)
+    except Exception as e:
+        print("❌ Failed to parse Gemini response:", e)
+        return {"action": "unknown", "query": query}
+
+
+
+# Option Functions
+def search_products_flow(user_query=None):
+    if not user_query:
+        user_query = input("🔍 What do you want to search? ").strip()
     if not user_query:
         print("⚠️ No query entered.")
         return
 
-    # Step 1: Run parser + search crew
     parser_search_crew = create_parser_search_crew(user_query)
     parser_search_crew.kickoff()
-
-    # Step 2: Access task output safely
     task_output = parser_search_crew.tasks[1].output
+
     try:
         if isinstance(task_output, str):
             search_results = json.loads(task_output)
@@ -35,7 +93,6 @@ def search_products_flow():
         print("❌ Unexpected format of search results.")
         return
 
-    # Display top products
     print("\n🛍️ Top 15 Products:\n")
     for idx, product in enumerate(search_results, 1):
         print(f"{idx}. {product['title'][:60]}...\n   💰 {product.get('price', 'N/A')} | 🔗 {product['url']}\n")
@@ -57,33 +114,52 @@ def buy_now_flow():
     buy_crew = create_buy_now_crew()
     buy_crew.kickoff()
 
-
-def main():
-    print("🛒 Welcome to ShopBuddyAI!")
-
+# New Gemini-based entrypoint
+def voice_assistant_loop():
+    print("🛒 Welcome to ShopBuddyAI with Voice Assistant!")
+    
     while True:
-        print("\n🔧 What would you like to do?")
-        print("1. Search for products")
-        print("2. Add a product to cart directly")
-        print("3. Set a price drop notifier")
-        print("4. Buy items from the cart")
-        print("5. Exit")
+        print("🗣️ Say 'start' to give a command or 'exit' to quit.")
+        command_trigger = get_voice_input()
+        
+        if not command_trigger:
+            continue
 
-        choice = input("Choose an option [1-5]: ").strip()
+        if "exit" in command_trigger.lower():
+            print("👋 Exiting ShopBuddyAI. See you again!")
+            break
 
-        if choice == '1':
-            search_products_flow()
-        elif choice == '2':
+        if "start" not in command_trigger.lower():
+            print("❗ Please say 'start' to begin or 'exit' to quit.")
+            continue
+
+        # Once user says 'start', prompt them to give a command
+        print("🎙️ Speak your command (e.g., find me Nike shoes)...")
+        query = get_voice_input()
+        if not query:
+            print("❌ Could not understand your query.")
+            continue
+
+        result = route_command(query)
+        action = result.get("action", "unknown")
+        extracted_query = result.get("query", "")
+
+        print("🤖 Gemini action:", action)
+        print("🗣️ Interpreted query:", extracted_query)
+
+        if action == "search_products":
+            search_products_flow(extracted_query)
+        elif action == "add_to_cart":
             add_to_cart_flow()
-        elif choice == '3':
+        elif action == "price_notifier":
             price_notifier_flow()
-        elif choice == '4':
+        elif action == "buy_now":
             buy_now_flow()
-        elif choice == '5':
+        elif action == "exit":
             print("👋 Exiting ShopBuddyAI. See you again!")
             break
         else:
-            print("❌ Invalid choice. Please enter a number from 1 to 5.")
+            print("❌ Sorry, I can help with only search_products, add_to_cart, price_notifier, buy_now, or exit.")
 
 if __name__ == "__main__":
-    main()
+    voice_assistant_loop()

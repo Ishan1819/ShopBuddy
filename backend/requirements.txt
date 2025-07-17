@@ -7,3 +7,6 @@ crewai[tools]
 crewai-tools
 schedule
 selenium
+SpeechRecognition 
+google-generativeai
+apscheduler

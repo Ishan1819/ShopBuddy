@@ -16,8 +16,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from backend.bots.price_notifier_bot import check_price_and_notify, send_email, update_monitor_status
 
 def background_monitor():
-    url = "https://www.amazon.in/Puma-Unisex-Adult-Sneakers-8-30642203/dp/B07QJPLWGZ/ref=sr_1_5?dib=eyJ2IjoiMSJ9.vCbls3Xo7E9BZLrZIHD_FSONLJQcWlYTQHMCBi2h9XRpG-2rCfvcLZX_H9Y6k8IY_se2ljEp_Xfjh4ISxMF5yvYxkW8ZSBwPney5i9n3zN8N6ELCMVccE-wesnXwmWyUlR55Xw_zrALS2TF7IMf_l5G1wgg6vOuddBse3KS97K9I2GGZfErtJb2EAS8JG_wWkegW6H85jdSF1FR47mHPMvxN13eyLnjhmM_-KLM4lUPOvAs6aYIE9yaaa6uXD77xK0rNQgcgStZ2aFrwPM9i7o-VnheMDpeQxf3savCIApc.jQdAMqHbuVy_wRJ-p_X2d4U8eHZxs1vEsqeXXnEGWyw&dib_tag=se&keywords=Puma+shoes&nsdOptOutParam=true&qid=1752129911&sr=8-5"
-    target_price = 2000
+    url = "https://www.amazon.in/Nike-Revolution-8-Green-Black-Green-STRIKE-WHITE-HJ9198-301-7UK/dp/B0DPHYZMR5/ref=sr_1_3?dib=eyJ2IjoiMSJ9.1IiQRYowTIewJTnt1YQd-J57RT-cejVbr3P3VIeDlOanJ8DQWibL9R-U4BoXLYBqjb5hfYqX5Gl5_7Gpm7Gt0QrJJbGh3JWA3uTJTQU-LRLvujA9kDvcIMR6t7P5RWoC33uajvf1TSHFDc9lrP0Xbl1vyDPYWescD4SPXXiFxR-JuUlMhVXLQa7ShZD-PZEYNGf8Yv_DDRZmavmhvsE6WQnSIe2UnY2nRiq_HyVrmxpwRTtUKCLodTV7lUSOr_He3c3Kuoo5QPi6LVInVghOr-zPKjHCjz2TyF2XauN7J3o.OzvqS1z6nhq8KZUd64qCGEElnclyLcBpsvO9vAYveQk&dib_tag=se&keywords=Nike&nsdOptOutPara"
+    target_price = 5000
     interval_seconds = 120
     
     print(f"[BACKGROUND] Background monitoring started for: {url}")

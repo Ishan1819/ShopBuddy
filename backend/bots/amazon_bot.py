@@ -5,6 +5,13 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 from urllib.parse import quote_plus
+import os
+import json
+
+def save_results_to_file(results, file_path="products.json"):
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+    print(f"📁 Saved {len(results)} products to {file_path}")
 
 def create_driver(headless=False):
     options = Options()
@@ -25,14 +32,13 @@ def create_driver(headless=False):
 def extract_product_results(driver):
     """Extract product information from search results"""
     results = []
-    
-    # Multiple selectors for product containers
+
     product_selectors = [
         "//div[@data-component-type='s-search-result']",
         "//div[contains(@class, 's-result-item')]",
         "//div[@data-asin and @data-asin!='']"
     ]
-    
+
     products = []
     for selector in product_selectors:
         try:
@@ -41,113 +47,100 @@ def extract_product_results(driver):
                 break
         except:
             continue
-    
+
     print(f"📦 Found {len(products)} products")
-    
-    for i, product in enumerate(products[:15]):  # Get more results
+
+    for i, product in enumerate(products[:15]):
         try:
-            # Extract title with more comprehensive selectors
-            title_selectors = [
+            # Title
+            title = None
+            for sel in [
                 ".//h2//span[contains(@class, 'a-size-mini')]",
                 ".//h2//span[contains(@class, 'a-size-base-plus')]",
                 ".//h2//a//span",
                 ".//h2//span",
                 ".//a[contains(@class, 's-link-style')]//span",
                 ".//span[contains(@class, 's-size-mini')]"
-            ]
-            
-            title = None
-            for title_sel in title_selectors:
+            ]:
                 try:
-                    title_elem = product.find_element(By.XPATH, title_sel)
+                    title_elem = product.find_element(By.XPATH, sel)
                     title = title_elem.text.strip()
-                    if title and len(title) > 10:  # Ensure we get meaningful title
+                    if title and len(title) > 10:
                         break
                 except:
                     continue
-            
-            # Extract link with better error handling
-            link_selectors = [
+
+            # Link
+            link = None
+            for sel in [
                 ".//h2//a[@href]",
                 ".//a[contains(@class, 's-link-style')][@href]",
                 ".//a[@href and contains(@href, '/dp/')]"
-            ]
-            
-            link = None
-            for link_sel in link_selectors:
+            ]:
                 try:
-                    link_elem = product.find_element(By.XPATH, link_sel)
+                    link_elem = product.find_element(By.XPATH, sel)
                     raw_link = link_elem.get_attribute("href")
                     if raw_link:
-                        # Clean and validate URL
                         if raw_link.startswith("http"):
                             link = raw_link
                         elif raw_link.startswith("/"):
                             link = f"https://www.amazon.in{raw_link}"
                         else:
                             link = f"https://www.amazon.in/{raw_link}"
-                        
-                        # Validate that it's a product URL
                         if "/dp/" in link or "/gp/product/" in link:
                             break
                         else:
                             link = None
-                except Exception as e:
-                    print(f"🔗 Link extraction error for selector {link_sel}: {e}")
+                except:
                     continue
-            
-            # Extract price with better handling
-            price_selectors = [
+
+            # Price
+            price = None
+            for sel in [
                 ".//span[@class='a-price-whole']",
                 ".//span[contains(@class, 'a-price-whole')]",
                 ".//span[@class='a-offscreen']",
                 ".//span[contains(@class, 'a-price')]//span[@aria-hidden='true']"
-            ]
-            
-            price = None
-            for price_sel in price_selectors:
+            ]:
                 try:
-                    price_elem = product.find_element(By.XPATH, price_sel)
+                    price_elem = product.find_element(By.XPATH, sel)
                     price_text = price_elem.get_attribute("textContent") or price_elem.text
                     if price_text and any(char.isdigit() for char in price_text):
                         price = price_text.strip().replace(',', '')
                         break
                 except:
                     continue
-            
-            # Additional validation and debugging
+
+            # Image
+            image_url = None
+            try:
+                img_elem = product.find_element(By.XPATH, ".//img[contains(@src, 'media-amazon')]")
+                image_url = img_elem.get_attribute("src")
+            except:
+                pass
+
             if title and link:
-                # Validate URL format
-                if not any(pattern in link for pattern in ["/dp/", "/gp/product/", "amazon.in"]):
-                    print(f"⚠️ Suspicious URL format: {link}")
-                    continue
-                
-                # Clean up title
-                title = title.replace('\n', ' ').strip()
-                
-                result = {
+                results.append({
                     "title": title,
                     "url": link,
                     "price": price,
+                    "image": image_url,
                     "position": i + 1
-                }
-                
-                results.append(result)
+                })
                 print(f"✅ Product {i+1}: {title[:60]}...")
                 print(f"   💰 Price: {price or 'N/A'}")
+                print(f"   🖼️ Image: {image_url or 'N/A'}")
                 print(f"   🔗 URL: {link}")
                 print()
-                
             else:
                 print(f"❌ Product {i+1}: Missing title or link")
-                print(f"   Title: {title}")
-                print(f"   Link: {link}")
-                
+
         except Exception as e:
             print(f"⚠️ Error extracting product {i+1}: {e}")
             continue
-    
+
     return results
+
 
 def search_amazon_alternative(filters):
     """
@@ -294,8 +287,10 @@ def add_to_cart_amazon(urls: list, *args, **kwargs):
 
 
 # # Main function to be called by external search tool
-def main(test_filters):
+def mainn(test_filters):
     results = search_amazon(test_filters)
     print(f"\n📋 Found {len(results)} results:")
-    
+    print(type(results))
+    save_results_to_file(results)
+
     return results

@@ -10,3 +10,4 @@ selenium
 SpeechRecognition 
 google-generativeai
 apscheduler
+undetected-chromedriver

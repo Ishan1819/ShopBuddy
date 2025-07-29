@@ -11,17 +11,43 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
 import json
 import re
+
+
+
 # Load API key from .env
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-def create_driver(headless=False):
-    options = Options()
+import undetected_chromedriver as uc  # NEW: Install via pip
+
+def create_driver(headless=True):
+    options = uc.ChromeOptions()
     if headless:
         options.add_argument("--headless=new")
+
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    return webdriver.Chrome(options=options)
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--disable-gpu"    )
+    options.add_argument("--disable-infobars")
+    options.add_argument("--start-maximized")
+    options.add_argument("--disable-extensions")
+
+    # Use a real user-agent
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.76")
+
+
+    # Launch undetected driver
+    driver = uc.Chrome(options=options)
+
+
+    # Bypass navigator.webdriver = true
+    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+        "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+    })
+
+    return driver
+
 
 
 def parse_address_with_gemini(name, phone, full_address):
@@ -64,47 +90,73 @@ Output Format:
 
 
 
-def proceed_to_checkout(name, phone, full_address, payment_choice):
-    driver = create_driver(headless=False)
-    driver.get("https://www.amazon.in/gp/cart/view.html")
+def proceed_to_checkout(payment_choice):
+    # Step 1: Use headless driver to get final checkout URL
+    headless_driver = create_driver(headless=True)
+    headless_driver.get("https://www.amazon.in/gp/cart/view.html")
     time.sleep(3)
-
-    # Step 1: Click Proceed to Buy
+    # Step 0: Check and perform login if needed
     try:
-        proceed_button = driver.find_element(By.NAME, "proceedToRetailCheckout")
-        proceed_button.click()
-        print("👉 Proceeded to checkout.")
-    except Exception as e:
-        driver.quit()
-        return f"❌ Could not click Proceed to Buy: {e}"
+        # Check if redirected to sign-in
+        if "signin" in headless_driver.current_url:
+            print("🔐 Signing in...")
 
+            email_input = WebDriverWait(headless_driver, 10).until(
+                EC.presence_of_element_located((By.ID, "ap_email"))
+            )
+            email_input.send_keys(os.getenv("AMAZON_EMAIL"))
+            headless_driver.find_element(By.ID, "continue").click()
+
+            password_input = WebDriverWait(headless_driver, 10).until(
+                EC.presence_of_element_located((By.ID, "ap_password"))
+            )
+            password_input.send_keys(os.getenv("AMAZON_PASSWORD"))
+            headless_driver.find_element(By.ID, "signInSubmit").click()
+
+            print("✅ Signed in successfully.")
+
+            # Optional: wait for the cart to reload
+            WebDriverWait(headless_driver, 10).until(
+                EC.presence_of_element_located((By.ID, "sc-active-cart"))
+            )
+
+    except Exception as e:
+        print(f"❌ Sign-in failed: {e}")
+        headless_driver.quit()
+        return
+
+    try:
+        name = input("👤 Enter your full name: ")
+        phone = input("📞 Enter your phone number: ")
+        full_address = input("🏠 Enter your full delivery address (everything): ")
+        
+        proceed_button = headless_driver.find_element(By.NAME, "proceedToRetailCheckout")
+        proceed_button.click()
+        print("👉 Proceeded to checkout in headless mode...")
+        
+        # Wait until page loads after proceed
+        WebDriverWait(headless_driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+        final_url = headless_driver.current_url
+        print(f"🌐 Extracted payment URL: {final_url}")
+
+    except Exception as e:
+        headless_driver.quit()
+        return f"❌ Error while getting payment page URL: {e}"
+
+    headless_driver.quit()
+
+    # Step 2: Launch visible driver and go to the payment page directly
+    driver = create_driver(headless=True)
+    driver.get(final_url)
     time.sleep(5)
 
-    # Step 2: Parse and autofill address
+    # Step 3: Handle address input if necessary
     try:
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-        
-        # ➕ Step 2a: Click "Add a new delivery address"
-        try:
-            print("🔍 Looking for 'Add a new address' button...")
-            add_new_address_btn = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((
-                    By.XPATH, "//a[contains(text(), 'Add a new delivery address')] | //span[contains(text(), 'Add a new address')]"
-                ))
-            )
-            print("➕ Clicking 'Add a new delivery address'...")
-            add_new_address_btn.click()
-            time.sleep(2)
-        except Exception as e:
-            print("⚠️ 'Add a new delivery address' button not found or already opened:", e)
-            print("📄 Current page title:", driver.title)
-            print("📄 Current URL:", driver.current_url)
+        if "select-address" not in driver.current_url:
+            print("ℹ️ No saved address found. Asking user for input...")
+            parsed = parse_address_with_gemini(name, phone, full_address)
+            print("📦 Parsed Address from Gemini:", parsed)
 
-
-        parsed = parse_address_with_gemini(name, phone, full_address)
-        print("📦 Parsed address from Gemini:", parsed)
-
-        try:
             driver.find_element(By.NAME, "address-ui-widgets-enterAddressFullName").send_keys(name)
             driver.find_element(By.NAME, "address-ui-widgets-enterAddressPhoneNumber").send_keys(phone)
             driver.find_element(By.NAME, "address-ui-widgets-enterAddressPostalCode").send_keys(parsed.get("pincode", ""))
@@ -114,27 +166,26 @@ def proceed_to_checkout(name, phone, full_address, payment_choice):
             driver.find_element(By.NAME, "address-ui-widgets-enterAddressCity").send_keys(parsed.get("city", ""))
             driver.find_element(By.NAME, "address-ui-widgets-enterAddressStateOrRegion").send_keys(parsed.get("state", ""))
 
-            print("👀 Please review the pre-filled address on the Amazon page. Once satisfied, press ENTER to continue...")
-            input("✔️ Press ENTER to proceed with submission...")
+            input("👀 Review and press ENTER to submit the address...")
             driver.find_element(By.XPATH, "//input[@type='submit']").click()
             print("✅ Address submitted.")
-        except NoSuchElementException:
-            print("✅ Address already present or form not shown.")
+        else:
+            print("✅ Existing address found, skipping input.")
     except Exception as e:
-        print("🟠 Unexpected issue during address autofill:", e)
+        print("⚠️ Address autofill skipped due to error:", e)
 
     time.sleep(5)
-    print(f"💳 Selected payment option: {payment_choice}")
 
-    # Step 3: Payment Handling
+    # Step 4: Payment method handling
+    print(f"💳 Selected payment option: {payment_choice}")
     if not payment_choice:
         driver.quit()
         return "❌ No payment option selected."
 
     if payment_choice in [1, 2, 3, 4]:
-        input("💳 Complete payment manually and press ENTER to close browser...")
+        input("💳 Complete payment manually in the browser and press ENTER to close...")
         driver.quit()
-        return "✅ Payment manually initiated."
+        return "✅ Manual payment initiated."
 
     elif payment_choice == 5:
         try:
@@ -155,6 +206,103 @@ def proceed_to_checkout(name, phone, full_address, payment_choice):
         except Exception as e:
             driver.quit()
             return f"❌ COD flow failed: {e}"
-    else:
-        driver.quit()
-        return "❌ Invalid payment option."
+
+    driver.quit()
+    return "❌ Invalid payment option."
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# import time
+# from selenium.webdriver.common.by import By
+# from selenium.webdriver.support.ui import WebDriverWait
+# from selenium.webdriver.support import expected_conditions as EC
+# from selenium.common.exceptions import NoSuchElementException
+
+# from backend.utils.driver_factory import create_driver
+# from backend.utils.gemini_parser import parse_address_with_gemini
+
+# def proceed_to_checkout(payment_choice):
+#     driver = create_driver()
+#     driver.get("https://www.amazon.in/gp/cart/view.html")
+#     time.sleep(3)
+
+#     # Proceed to checkout
+#     try:
+#         driver.find_element(By.NAME, "proceedToRetailCheckout").click()
+#         print("✅ Proceeded to checkout.")
+#     except Exception as e:
+#         driver.quit()
+#         return f"❌ Could not click Proceed to Buy: {e}"
+
+#     time.sleep(5)
+
+#     # Check for existing delivery address
+#     try:
+#         if "select-address" in driver.current_url:
+#             print("✅ Existing address found. Skipping input.")
+#         else:
+#             print("ℹ️ No saved address found. Asking user for address input.")
+#             name = input("👤 Enter full name: ")
+#             phone = input("📞 Enter phone number: ")
+#             full_address = input("🏠 Enter full delivery address (everything): ")
+
+#             parsed = parse_address_with_gemini(name, phone, full_address)
+#             print("📦 Parsed Address:", parsed)
+
+#             driver.find_element(By.NAME, "address-ui-widgets-enterAddressFullName").send_keys(name)
+#             driver.find_element(By.NAME, "address-ui-widgets-enterAddressPhoneNumber").send_keys(phone)
+#             driver.find_element(By.NAME, "address-ui-widgets-enterAddressPostalCode").send_keys(parsed.get("pincode", ""))
+#             driver.find_element(By.NAME, "address-ui-widgets-enterAddressLine1").send_keys(parsed.get("flat", ""))
+#             driver.find_element(By.NAME, "address-ui-widgets-enterAddressLine2").send_keys(parsed.get("street", ""))
+#             driver.find_element(By.NAME, "address-ui-widgets-landmark").send_keys(parsed.get("landmark", ""))
+#             driver.find_element(By.NAME, "address-ui-widgets-enterAddressCity").send_keys(parsed.get("city", ""))
+#             driver.find_element(By.NAME, "address-ui-widgets-enterAddressStateOrRegion").send_keys(parsed.get("state", ""))
+
+#             input("👀 Review address in browser and press ENTER to submit...")
+#             driver.find_element(By.XPATH, "//input[@type='submit']").click()
+#             print("✅ Address submitted.")
+#     except Exception as e:
+#         print("⚠️ Issue during address handling:", e)
+
+#     time.sleep(5)
+#     print(f"💳 Selected payment option: {payment_choice}")
+
+#     if not payment_choice:
+#         driver.quit()
+#         return "❌ No payment option selected."
+
+#     if payment_choice in [1, 2, 3, 4]:
+#         input("💳 Complete payment manually and press ENTER to close browser...")
+#         driver.quit()
+#         return "✅ Payment manually initiated."
+
+#     elif payment_choice == 5:
+#         try:
+#             cod_btn = driver.find_element(By.XPATH, "//input[@type='radio' and @value='COD']")
+#             cod_btn.click()
+#             driver.find_element(By.XPATH, "//input[@type='submit']").click()
+#             time.sleep(3)
+#             driver.find_element(By.NAME, "placeYourOrder1").click()
+#             print("🎉 COD order placed!")
+#             driver.quit()
+#             return "✅ Order placed using COD!"
+#         except Exception as e:
+#             driver.quit()
+#             return f"❌ COD flow failed: {e}"
+
+#     driver.quit()
+#     return "❌ Invalid payment option."

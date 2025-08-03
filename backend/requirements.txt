@@ -11,3 +11,5 @@ SpeechRecognition
 google-generativeai
 apscheduler
 undetected-chromedriver
+mysql.connector
+itsdangerous

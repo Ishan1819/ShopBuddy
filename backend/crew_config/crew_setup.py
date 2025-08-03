@@ -89,7 +89,8 @@ from backend.tools.search_tool import get_search_tool
 from backend.tools.cart_tool import get_cart_tool
 from backend.tools.price_drop_tool import get_price_drop_tool
 from backend.tools.buy_now_tool import get_buy_now_tool
-
+from backend.tools.cart_search_tool import get_cart_search_tool
+from backend.tools.signin_signup_tool import get_signin_signup_tool
 gemini_llm = LiteLLMWrapper(model="gemini/gemini-1.5-flash")
 
 def create_parser_search_crew(user_query: str) -> Crew:
@@ -132,20 +133,22 @@ def create_parser_search_crew(user_query: str) -> Crew:
     )
 
 
-def create_addtocart_crew(product_url: str) -> Crew:
+def create_addtocart_crew(product_url: str, user_id: int) -> Crew:
     cart_ai = Agent(
         role="Cart Agent",
-        goal="Add selected product to the Amazon cart",
-        backstory="Expert at handling automation for adding specific products to the cart.",
+        goal="Add selected product to the Amazon cart and save to database",
+        backstory="Expert at handling automation for adding specific products to the cart and managing user data.",
         tools=[get_cart_tool()],
         verbose=True,
         llm=gemini_llm
     )
 
     cart_task = Task(
-        description=f"Add this product to the cart: '{product_url}'",
+        description=f"Add this product to the cart: '{product_url}' for user ID: {user_id}. Make sure to save the product details to the database.",
         agent=cart_ai,
-        expected_output="Confirmation of product added to cart."
+        expected_output="Confirmation of product added to cart and saved to database with user information.",
+        # Pass both URL and user_id to the task
+        input={"product_url": product_url, "user_id": user_id}
     )
 
     return Crew(
@@ -154,6 +157,7 @@ def create_addtocart_crew(product_url: str) -> Crew:
         process="sequential",
         verbose=True
     )
+
 
 def create_price_drop_crew(product_url: str) -> Crew:
     # Placeholder for price drop notifier crew
@@ -232,6 +236,84 @@ def create_buy_now_crew() -> Crew:
     return Crew(
         agents=[buy_ai],
         tasks=[buy_task],
+        process="sequential",
+        verbose=True
+    )
+
+
+
+def create_search_cart_crew(user_query: str, login_id: int) -> Crew:
+    search_cart = Agent(
+        role="Search Cart Agent",
+        goal="Search for products and display to the user",
+        backstory="An expert in searching products and displaying them to the user.",
+        tools=[get_cart_search_tool()],
+        verbose=True,
+        llm=gemini_llm
+    )
+    
+    search_task = Task(
+        description=f"Search for products based on user query from the cart: '{user_query}' for user with ID {login_id}.",
+        agent=search_cart,
+        expected_output="A list of product dictionaries with title, url, and price.",
+        input={"query": user_query}
+    )
+    
+    return Crew(
+        agents=[search_cart],
+        tasks=[search_task],
+        process="sequential",
+        verbose=True
+    )
+    
+
+# Before wala code
+# def signin_signup(email: str, password: str) -> Crew:
+#     signin_ai = Agent(
+#         role="SignIn/SignUp Agent",
+#         goal="Handle user sign-in or sign-up",
+#         backstory="An expert in managing user authentication.",
+#         tools=[get_signin_signup_tool()],
+#         verbose=True,
+#         llm=gemini_llm
+#     )
+    
+#     signin_task = Task(
+#         description=f"Handle user authentication for email: {email} and password: {password}",  # ✅ Include params here
+#         agent=signin_ai,
+#         expected_output="A dictionary with status, message, and user_id if signed in or signed up.",
+#         input={"email": email, "password": password} # 🔄 Pass params as
+#         # "input"  # This allows the agent to use them directly
+#     )
+    
+#     return Crew(
+#         agents=[signin_ai],
+#         tasks=[signin_task],
+#         process="sequential",
+#         verbose=True
+#     )
+
+
+def signin_signup(email: str, password: str) -> Crew:
+    signin_ai = Agent(
+        role="SignIn/SignUp Agent",
+        goal="Handle user sign-in or sign-up",
+        backstory="An expert in managing user authentication.",
+        tools=[get_signin_signup_tool()],
+        verbose=True,
+        llm=gemini_llm
+    )
+    
+    signin_task = Task(
+        description=f"Use the SigninSignupTool to authenticate user with email '{email}' and password '{password}'. Return the exact result from the tool.",
+        agent=signin_ai,
+        expected_output="Return the exact dictionary result from the SigninSignupTool containing status, message, and user_id.",
+        # Remove the input parameter as it might be causing issues
+    )
+    
+    return Crew(
+        agents=[signin_ai],
+        tasks=[signin_task],
         process="sequential",
         verbose=True
     )

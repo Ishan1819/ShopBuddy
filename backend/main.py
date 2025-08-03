@@ -201,9 +201,12 @@ import uvicorn
 from fastapi.staticfiles import StaticFiles
 import os
 from router import router  # importing your APIRouter instance
+from starlette.middleware.sessions import SessionMiddleware
 
 app = FastAPI()
 
+# Secret key for signing cookies (keep it secret!)
+app.add_middleware(SessionMiddleware, secret_key="supersecret-key")
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
@@ -220,6 +223,8 @@ app.add_middleware(
 # Include all APIs under /api
 app.include_router(router, prefix="/api")
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
+print("📁 Serving frontend from:", frontend_path)
+print("📄 index.html exists:", os.path.exists(os.path.join(frontend_path, "index.html")))
 
 app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
 # -----------------------------

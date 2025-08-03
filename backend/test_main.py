@@ -217,7 +217,8 @@ from backend.crew_config.crew_setup import (
     create_price_drop_crew,
     create_buy_now_crew,
     create_search_cart_crew,
-    signin_signup
+    signin_signup,
+    create_cart_history_crew
 )
 
 # -----------------------------
@@ -456,4 +457,30 @@ async def create_login_crew(email: str, password: str):
 
 def search_products_flow(query: str, user_id: int):
     search = create_search_cart_crew(query, user_id)
-    search.kickoff()
+    result = search.kickoff()
+    
+    return result
+    
+    
+    
+
+def get_cart_history_flow(user_id: int, search_query: str):
+    """
+    Get cart history flow with AI agent for specific search query
+    
+    Args:
+        user_id: User ID from cookies/session
+        search_query: User's search query (e.g., "shoes", "bags I added yesterday")
+    """
+    if not user_id:
+        print("❌ Error: User ID is required")
+        return "❌ Error: User not authenticated"
+    
+    if not search_query.strip():
+        print("❌ Error: Search query is required")
+        return "❌ Error: Please specify what you're looking for in your cart history"
+    
+    print(f"📚 Searching cart history for user {user_id} with query: '{search_query}'")
+    cart_history_crew = create_cart_history_crew(user_id, search_query)
+    result = cart_history_crew.kickoff()
+    return result

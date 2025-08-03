@@ -1,4 +1,4 @@
-import mysql.connector
+import pymysql
 import os
 import re
 import json
@@ -14,7 +14,7 @@ model = genai.GenerativeModel("gemini-1.5-flash")
 def extract_title_and_time(query: str):
     """
     Uses Gemini to extract product title and time range from user query.
-    Returns: (product_title: str, (start_datetime, end_datetime) or None)
+    Returns: (product_description: str, (start_datetime, end_datetime) or None)
     """
 
     prompt = f"""
@@ -23,7 +23,7 @@ Extract the product title and time range (if any) from this query.
 
 Respond ONLY in this JSON format:
 {{
-  "product_title": "protein powder",
+  "product_description": "protein powder",
   "time_range": {{
     "start": "2024-06-01T00:00:00",
     "end": "2024-06-30T23:59:59"
@@ -48,15 +48,15 @@ Return only the JSON. No explanation or formatting.
 
         data = json.loads(content)
 
-        product_title = data.get("product_title", "").strip()
+        product_description = data.get("product_description", "").strip()
         time_range = data.get("time_range")
 
         if time_range:
             start = datetime.fromisoformat(time_range["start"])
             end = datetime.fromisoformat(time_range["end"])
-            return product_title, (start, end)
+            return product_description, (start, end)
         else:
-            return product_title, None
+            return product_description, None
 
     except Exception as e:
         print("⚠️ Error extracting with Gemini:", e)
@@ -70,15 +70,16 @@ def search_products(query: str, user_id: str):
 
     title_query, time_range = extract_title_and_time(query)
 
-    conn = mysql.connector.connect(
+    conn = pymysql.connect(
         host="localhost",
         user="root",
         password="12345",
-        database="shopbuddy"
+        database="shopbuddy",
+        cursorclass=pymysql.cursors.DictCursor
     )
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor()
 
-    sql = "SELECT * FROM cartadders WHERE user_id = %s AND product_title LIKE %s"
+    sql = "SELECT * FROM cartadders WHERE user_id = %s AND product_description LIKE %s"
     params = [user_id, f"%{title_query}%"]
 
     if time_range:

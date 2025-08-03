@@ -7,9 +7,9 @@ import os
 from fastapi import APIRouter, Form, Request, Response
 # from bots.login_bot import login_signup
 import mysql.connector
-from test_main import route_command, create_parser_search_crew, add_to_cart_flow, create_login_crew, search_products_flow
+from test_main import route_command, create_parser_search_crew, add_to_cart_flow, create_login_crew, search_products_flow, get_cart_history_flow
 from fastapi.responses import RedirectResponse
-
+from pydantic import BaseModel
 router = APIRouter()
 
 # ---------- POST: /api/query ----------
@@ -219,7 +219,8 @@ async def search_cart(request: Request, query: str = Form(...)):
         return {"error": "User not authenticated"}
 
     cart_items = search_products_flow(query, user_id)
-
+    print(cart_items)
+    print(type(cart_items))
     return {
         "user_id": user_id,
         "search_query": query,
@@ -230,3 +231,56 @@ async def search_cart(request: Request, query: str = Form(...)):
 @router.get("/login")
 def login_redirect():
     return RedirectResponse(url="/")
+
+
+
+# class CartHistoryRequest(BaseModel):
+#     query: str  # User's search query like "shoes", "bags", "handbags I added yesterday"
+
+# @router.post("/cart-history", tags=["Cart"])
+# async def get_cart_history_endpoint(request: Request, search_request: CartHistoryRequest):
+#     try:
+#         # Get user_id from cookies
+#         user_id = request.cookies.get("user_id")
+        
+#         if not user_id:
+#             return JSONResponse(
+#                 status_code=401,
+#                 content={
+#                     "status": "error",
+#                     "message": "User not authenticated. Please login first."
+#                 }
+#             )
+        
+#         user_id = int(user_id)
+#         query = search_request.query
+        
+#         print(f"📚 Cart history search for user: {user_id}, query: '{query}'")
+        
+#         # Call the cart history flow with search query
+#         result = get_cart_history_flow(user_id, query)
+        
+#         return {
+#             "status": "success",
+#             "data": result,
+#             "user_id": user_id,
+#             "search_query": query
+#         }
+        
+#     except ValueError:
+#         return JSONResponse(
+#             status_code=400,
+#             content={
+#                 "status": "error",
+#                 "message": "Invalid user ID format"
+#             }
+#         )
+#     except Exception as e:
+#         print(f"❌ Cart history endpoint error: {e}")
+#         return JSONResponse(
+#             status_code=500,
+#             content={
+#                 "status": "error",
+#                 "message": f"Internal server error: {str(e)}"
+#             }
+#         )

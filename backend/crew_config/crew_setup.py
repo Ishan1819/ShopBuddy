@@ -91,6 +91,7 @@ from backend.tools.price_drop_tool import get_price_drop_tool
 from backend.tools.buy_now_tool import get_buy_now_tool
 from backend.tools.cart_search_tool import get_cart_search_tool
 from backend.tools.signin_signup_tool import get_signin_signup_tool
+from backend.tools.cart_history_tool import get_cart_history_search_tool
 gemini_llm = LiteLLMWrapper(model="gemini/gemini-1.5-flash")
 
 def create_parser_search_crew(user_query: str) -> Crew:
@@ -314,6 +315,45 @@ def signin_signup(email: str, password: str) -> Crew:
     return Crew(
         agents=[signin_ai],
         tasks=[signin_task],
+        process="sequential",
+        verbose=True
+    )
+
+
+
+def create_cart_history_crew(user_id: int, search_query: str) -> Crew:
+    """Create crew to handle cart history search and retrieval"""
+    
+    cart_history_ai = Agent(
+        role="Cart History Search Agent",
+        goal="Search and retrieve specific products from user's cart history based on their query",
+        backstory="Expert at understanding user queries about their cart history and finding relevant products. Can interpret time-based queries (like 'hours before', 'yesterday') and product-based queries (like 'shoes', 'handbags', 'electronics').",
+        tools=[get_cart_history_search_tool()],
+        verbose=True,
+        llm=gemini_llm
+    )
+
+    cart_history_task = Task(
+        description=f"""
+        Search the cart history for user ID: {user_id} based on this query: "{search_query}"
+        
+        Instructions:
+        1. Analyze the user's query to understand what they're looking for
+        2. If the query mentions time (like "hours before", "yesterday", "last week"), filter by time range
+        3. If the query mentions specific products (like "shoes", "bags", "electronics"), filter by product description
+        4. Return only the matching products with their timestamps, descriptions, prices, and URLs
+        5. If no matches found, explain what was searched and suggest alternatives
+        
+        Format the response in a user-friendly way showing only relevant results.
+        """,
+        agent=cart_history_ai,
+        expected_output="A filtered list of cart items matching the user's query, with timestamp, product description, price, and URL for each relevant item.",
+        input={"user_id": user_id, "search_query": search_query}
+    )
+
+    return Crew(
+        agents=[cart_history_ai],
+        tasks=[cart_history_task],
         process="sequential",
         verbose=True
     )

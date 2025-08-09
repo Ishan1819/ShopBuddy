@@ -87,11 +87,12 @@ from backend.llm.litellm_wrapper import LiteLLMWrapper
 from backend.tools.parser_tool import get_parser_tool
 from backend.tools.search_tool import get_search_tool
 from backend.tools.cart_tool import get_cart_tool
-from backend.tools.price_drop_tool import get_price_drop_tool
+# from backend.tools.price_drop_tool import get_price_drop_tool
 from backend.tools.buy_now_tool import get_buy_now_tool
 from backend.tools.cart_search_tool import get_cart_search_tool
 from backend.tools.signin_signup_tool import get_signin_signup_tool
 from backend.tools.cart_history_tool import get_cart_history_search_tool
+from backend.tools.price_alert_tool import get_price_alert_tool
 gemini_llm = LiteLLMWrapper(model="gemini/gemini-1.5-flash")
 
 def create_parser_search_crew(user_query: str) -> Crew:
@@ -160,29 +161,29 @@ def create_addtocart_crew(product_url: str, user_id: int) -> Crew:
     )
 
 
-def create_price_drop_crew(product_url: str) -> Crew:
-    # Placeholder for price drop notifier crew
-    # This would be similar to the addtocart crew but focused on monitoring price drops
-    price_drop_ai = Agent(
-        role="Price Drop Notifier",
-        goal="Notify user when the price drops for a specific product",
-        backstory="Expert at monitoring product prices and notifying users.",
-        tools=[get_price_drop_tool()],  # Assuming get_cart_tool() can handle price monitoring
-        verbose=True,
-        llm=gemini_llm
-    )
-    price_drop_task = Task(
-        description=f"Monitor price drop for product: '{product_url}'",
-        agent=price_drop_ai,
-        expected_output="Notification when the price drops."
-    )
+# def create_price_drop_crew(product_url: str) -> Crew:
+#     # Placeholder for price drop notifier crew
+#     # This would be similar to the addtocart crew but focused on monitoring price drops
+#     price_drop_ai = Agent(
+#         role="Price Drop Notifier",
+#         goal="Notify user when the price drops for a specific product",
+#         backstory="Expert at monitoring product prices and notifying users.",
+#         tools=[get_price_drop_tool()],  # Assuming get_cart_tool() can handle price monitoring
+#         verbose=True,
+#         llm=gemini_llm
+#     )
+#     price_drop_task = Task(
+#         description=f"Monitor price drop for product: '{product_url}'",
+#         agent=price_drop_ai,
+#         expected_output="Notification when the price drops."
+#     )
 
-    return Crew(
-        agents=[price_drop_ai],
-        tasks=[price_drop_task],
-        process="sequential",
-        verbose=True
-    )
+#     return Crew(
+#         agents=[price_drop_ai],
+#         tasks=[price_drop_task],
+#         process="sequential",
+#         verbose=True
+#     )
 
 
 # def create_buy_now_crew(name, phone, address, payment_choice) -> Crew:
@@ -354,6 +355,44 @@ def create_cart_history_crew(user_id: int, search_query: str) -> Crew:
     return Crew(
         agents=[cart_history_ai],
         tasks=[cart_history_task],
+        process="sequential",
+        verbose=True
+    )
+    
+    
+def create_price_alert_crew(url: str, threshold: float, user_id: str) -> Crew:
+    """Create a crew to set up a price-drop alert for a user"""
+
+    price_alert_ai = Agent(
+        role="Price Drop Alert Agent",
+        goal="Set up an email alert for the user when a product's price drops below the given threshold.",
+        backstory="An agent that helps users monitor product prices and alerts them when prices fall below their desired threshold. Interfaces with tools to extract product information and store the alert.",
+        tools=[get_price_alert_tool()],
+        verbose=True,
+        llm=gemini_llm
+    )
+
+    price_alert_task = Task(
+        description=f"""
+        Set a price-drop alert for the user with ID '{user_id}'.
+
+        Instructions:
+        1. Extract the product's title from the given URL.
+        2. Save an alert with the user's ID, email, product title, product URL, and threshold price.
+        3. Return a confirmation with product name and threshold.
+        
+        Product URL: {url}
+        Target Price Threshold: ₹{threshold}
+        User ID: {user_id}
+        """,
+        agent=price_alert_ai,
+        expected_output="A dictionary containing: status, message, product_title, and saved_threshold.",
+        input={"url": url, "threshold": threshold, "user_id": user_id}
+    )
+
+    return Crew(
+        agents=[price_alert_ai],
+        tasks=[price_alert_task],
         process="sequential",
         verbose=True
     )

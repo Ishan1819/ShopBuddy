@@ -214,11 +214,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from backend.crew_config.crew_setup import (
     create_parser_search_crew,
     create_addtocart_crew,
-    create_price_drop_crew,
+    # create_price_drop_crew,
     create_buy_now_crew,
     create_search_cart_crew,
     signin_signup,
-    create_cart_history_crew
+    create_cart_history_crew,
+    create_price_alert_crew
 )
 
 # -----------------------------
@@ -351,11 +352,11 @@ def add_to_cart_flow(url, user_id):
         return "❌ Error: No product URL provided"
 
 
-def price_notifier_flow():
-    url = input("🔔 Enter the product URL for price drop notifications: ").strip()
-    if url:
-        price_drop_crew = create_price_drop_crew(url)
-        price_drop_crew.kickoff()
+# def price_notifier_flow():
+#     url = input("🔔 Enter the product URL for price drop notifications: ").strip()
+#     if url:
+#         price_drop_crew = create_price_drop_crew(url)
+#         price_drop_crew.kickoff()
 
 def buy_now_flow():
     print("💳 Proceeding to buy now...")
@@ -400,8 +401,8 @@ def voice_assistant_loop():
             search_products_flow(extracted_query)
         elif action == "add_to_cart":
             add_to_cart_flow()
-        elif action == "price_notifier":
-            price_notifier_flow()
+        # elif action == "price_notifier":
+        #     price_notifier_flow()
         # elif action == "buy_now":
         #     buy_now_flow()
         elif action == "exit":
@@ -461,7 +462,11 @@ def search_products_flow(query: str, user_id: int):
     
     return result
     
+def schedule_daily_price_check(url, threshold, user_id):
+    drop = create_price_alert_crew(url, threshold, user_id)
+    result = drop.kickoff()
     
+    return result
     
 
 def get_cart_history_flow(user_id: int, search_query: str):

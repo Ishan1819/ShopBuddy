@@ -288,36 +288,113 @@ def login_redirect():
 
 
 # main.py
-from fastapi import FastAPI, Request, Form
+# from fastapi import FastAPI, Request, Form
+# from apscheduler.schedulers.background import BackgroundScheduler
+# from backend.bots.price_notifier_bot import schedule_daily_price_check
+
+# scheduler = BackgroundScheduler()
+# scheduler.start()
+
+# # app = FastAPI()
+
+# @router.post("/set-price-alert")
+# async def set_price_alert(
+#     request: Request, product_url: str = Form(...), threshold: float = Form(...)
+# ):
+#     user_id = request.cookies.get("user_id")
+#     if not user_id:
+#         return {"error": "User not authenticated"}
+
+#     # Add a recurring job that runs every 5 minutes
+#     scheduler.add_job(
+#         func=schedule_daily_price_check,
+#         trigger="interval",
+#         minutes=5,
+#         args=[product_url, threshold, user_id],
+#         id=f"price_alert_{user_id}_{product_url}",
+#         replace_existing=True  # if already set, overwrite
+#     )
+
+#     return {
+#         "message": "Price alert scheduled every 5 minutes.",
+#         "product_url": product_url,
+#         "threshold": threshold
+#     }
+
+
+
+
+
+
+
+
+
+
+
+import json
+from pathlib import Path
 from apscheduler.schedulers.background import BackgroundScheduler
+from fastapi import APIRouter, Request, Form
 from backend.bots.price_notifier_bot import schedule_daily_price_check
 
+# router = APIRouter()
 scheduler = BackgroundScheduler()
-scheduler.start()
 
-# app = FastAPI()
+# Path adjusted to be relative to the backend folder where you run main.py
+PRODUCTS_FILE = Path("utils/monitored_products.json")
 
 @router.post("/set-price-alert")
 async def set_price_alert(
-    request: Request, product_url: str = Form(...), threshold: float = Form(...)
+    request: Request,
+    product_url: str = Form(...),
+    threshold: float = Form(...)
 ):
     user_id = request.cookies.get("user_id")
     if not user_id:
         return {"error": "User not authenticated"}
 
-    # Add a recurring job that runs every 5 minutes
+    PRODUCTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        if PRODUCTS_FILE.exists() and PRODUCTS_FILE.stat().st_size > 0:
+            with open(PRODUCTS_FILE, "r") as f:
+                products = json.load(f)
+        else:
+            products = []
+    except json.JSONDecodeError:
+        products = []
+
+    found = False
+    for p in products:
+        if p["url"] == product_url and p["user_id"] == user_id:
+            p["target_price"] = threshold
+            found = True
+            break
+
+    if not found:
+        products.append({
+            "url": product_url,
+            "target_price": threshold,
+            "user_id": user_id
+        })
+
+    with open(PRODUCTS_FILE, "w") as f:
+        json.dump(products, f, indent=2)
+
+    print("✅ Saved products:", products)
+    print("📂 File location:", PRODUCTS_FILE.resolve())
+
     scheduler.add_job(
         func=schedule_daily_price_check,
         trigger="interval",
         minutes=5,
         args=[product_url, threshold, user_id],
         id=f"price_alert_{user_id}_{product_url}",
-        replace_existing=True  # if already set, overwrite
+        replace_existing=True
     )
 
     return {
-        "message": "Price alert scheduled every 5 minutes.",
+        "message": "Price alert saved successfully. GitHub Actions will check it on schedule.",
         "product_url": product_url,
         "threshold": threshold
     }
-
